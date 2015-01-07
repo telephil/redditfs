@@ -1,18 +1,25 @@
 #ifndef __REDDIT_CLIENT_H__
 #define __REDDIT_CLIENT_H__ 1
 
-struct rc_error
+typedef struct Error Error;
+typedef struct Post  Post;
+
+struct Error
 {
 	char*	message;
 };
 
 
-struct rc_post
+struct Post
 {
 	char*	title;
 	char*	url;
 	long	score;
 };
 
-struct rc_post** rc_get(const char*, struct rc_error*);
+/* Retrieve list of Post for given subreddit
+ * Return nil on error and set error message
+ */
+Post** getposts(const char*, Error*);
+
 #endif

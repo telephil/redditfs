@@ -3,16 +3,16 @@ LD=9l
 CFLAGS=
 LDFLAGS=-lcurl -ljansson
 
-all:V:	reddit_client
+all:V:	redditfs
 
-reddit_client:	redditfs.o reddit_client.o
-	$LD $LDFLAGS -o reddit_client $prereq
+redditfs:	redditfs.o reddit_client.o
+	$LD $LDFLAGS -o redditfs $prereq
 
-reddit_client.o:	reddit_client.h
+redditfs.o reddit_client.o:	reddit_client.h
 
 %.o:	%.c
 	$CC	$CFLAGS -c $stem.c
 
 clean:V:
-	rm -f *.o reddit_client
+	rm -f *.o redditfs
 	
