@@ -1,0 +1,6 @@
+redditfs
+========
+
+A 9P file server to read reddit.
+The list of subreddits to expose is loaded from $home/lib/reddit.
+If the file does not exist the programming reddit is used.
