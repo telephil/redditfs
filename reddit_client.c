@@ -215,7 +215,7 @@ seterror(Error* error, char* fmt, ...)
 	va_list ap;
 	va_start(ap, fmt);
 	error->message = vsmprint(fmt, ap);
-	if(error->message) {
+	if(error->message == nil) {
 		fprint(2, "fatal: unable to allocate memory for error message\n");
 		exits("oom");
 	}
