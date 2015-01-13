@@ -5,10 +5,10 @@ LDFLAGS=-lcurl -ljansson
 
 all:V:	redditfs
 
-redditfs:	redditfs.o reddit_client.o
+redditfs:	redditfs.o fs.o reddit_client.o
 	$LD $LDFLAGS -o redditfs $prereq
 
-redditfs.o reddit_client.o:	reddit_client.h
+fs.o reddit_client.o:	reddit_client.h
 
 %.o:	%.c
 	$CC	$CFLAGS -c $stem.c
