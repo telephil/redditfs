@@ -4,8 +4,8 @@
 #include <thread.h>
 #include <9p.h>
 
-extern void srvinit(void);
-extern Srv rsrv;
+extern void xinit(void);
+extern Srv xsrv;
 
 void
 usage()
@@ -25,7 +25,7 @@ threadmain(int argc, char *argv[])
 		usage();
 	}ARGEND
 	
-	srvinit();
-	threadpostmountsrv(&rsrv, "reddit", nil, 0);
+	xinit();
+	threadpostmountsrv(&xsrv, "reddit", nil, 0);
 	threadexits(nil);
 }
