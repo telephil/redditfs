@@ -12,7 +12,6 @@ struct SubFid
 {
 	char*	src;
 	char*	data;
-	size_t	len;
 };
 
 static void 	xattach(Req*);
@@ -73,17 +72,16 @@ xwalk1(Fid *fid, char *name, Qid *qid)
 static char*
 xclone(Fid *oldfid, Fid *newfid)
 {
-	SubFid *r, *nr;
-	if(oldfid->aux == nil)
+	SubFid *sf, *nsf;
+	sf = oldfid->aux;
+	if(sf == nil)
 		return nil;
-	r = oldfid->aux;
-	nr = emalloc9p(sizeof(SubFid));
-	if(r->src != nil)
-		nr->src = estrdup9p(r->src);
-	if(r->data != nil)
-		nr->data = estrdup9p(r->data);
-	nr->len = r->len;
-	newfid->aux = nr;
+	nsf = emalloc9p(sizeof(SubFid));
+	if(sf->src != nil)
+		nsf->src = estrdup9p(sf->src);
+	if(sf->data != nil)
+		nsf->data = estrdup9p(sf->data);
+	newfid->aux = nsf;
 	return nil;
 }
 
@@ -105,21 +103,7 @@ xread(Req *r)
 {
 	SubFid *sf;
 	sf = r->fid->aux;
-	if(r->ifcall.offset >= sf->len){
-		r->ofcall.count = 0;
-		respond(r, nil);
-		return;
-	}
-	/* FIXME: some cases might fail!!! */
-	if(r->ifcall.count < sf->len){
-		char *s = emalloc9p(r->ifcall.count);
-		strncpy(s, sf->data+r->ifcall.offset, r->ifcall.count);
-		r->ofcall.data = s;
-		r->ofcall.count = r->ifcall.count;
-	}else{
-		r->ofcall.data = sf->data;
-		r->ofcall.count = sf->len;
-	}
+	readstr(r, sf->data);
 	respond(r, nil);
 }
 
@@ -127,9 +111,9 @@ static void
 xdestroyfid(Fid* fid)
 {
 	SubFid *sf;
-	if(fid->aux == nil)
-		return;
 	sf = fid->aux;
+	if(sf == nil)
+		return;
 	free(sf->src);
 	free(sf->data);
 	free(sf);
@@ -142,7 +126,7 @@ readsub(SubFid *sf)
 	Post	**posts;
 	Post	*post;
 	Error	error;
-	char 	*s;
+	char 	buf[1024];
 
 	posts = getposts(sf->src, &error);
 	if(posts == nil)
@@ -150,15 +134,13 @@ readsub(SubFid *sf)
 
 	str = s_newalloc(1024);
 	posts_foreach(post, posts) {
-		s = smprint("%ld - %s\n  %s\n",
+		snprint(buf, 1024, "%ld - %s\n  %s\n",
 			post->score,
 			post->title,
 			post->url);
-		s_append(str, s);
-		free(s);
+		s_append(str, buf);
 	}
 	sf->data = estrdup9p(s_to_c(str));
-	sf->len	 = s_len(str);
 	s_free(str);
 	
 	return nil;
