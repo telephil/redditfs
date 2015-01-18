@@ -61,7 +61,7 @@ xwalk1(Fid *fid, char *name, Qid *qid)
 	/* FIXME: check if walking subpath */
 	sf = fid->aux;
 	sf->src = estrdup9p(name);
-	q.type = 0;
+	q.type = QTFILE;
 	q.vers = 0;
 	q.path = 1;
 	*qid = q;
