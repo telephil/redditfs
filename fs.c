@@ -3,11 +3,12 @@
 #include <fcall.h>
 #include <thread.h>
 #include <9p.h>
+#include <libString.h>
 #include "reddit_client.h"
 
-typedef struct Response Response;
+typedef struct SubFid SubFid;
 
-struct Response
+struct SubFid
 {
 	char*	src;
 	char*	data;
@@ -21,7 +22,7 @@ static char*	xclone(Fid*, Fid*);
 static void 	xread(Req*);
 static void		xdestroyfid(Fid*);
 
-static char*	strposts(const char*);
+static char*	readsub(SubFid*);
 
 Srv xsrv;
 
@@ -39,7 +40,7 @@ xinit(void)
 static void
 xattach(Req *r)
 {
-	Response *response;
+	SubFid *sf;
 	Qid q;
 	
 	q.type = QTDIR;
@@ -48,19 +49,19 @@ xattach(Req *r)
 	r->ofcall.qid = q;
 	r->fid->qid = q;
 	
-	response = emalloc9p(sizeof(Response));
-	r->fid->aux = response;
+	sf = emalloc9p(sizeof(SubFid));
+	r->fid->aux = sf;
 	respond(r, nil);
 }
 
 static char*
 xwalk1(Fid *fid, char *name, Qid *qid)
 {
-	Response *response;
+	SubFid *sf;
 	Qid q;
 	/* FIXME: check if walking subpath */
-	response = fid->aux;
-	response->src = estrdup9p(name);
+	sf = fid->aux;
+	sf->src = estrdup9p(name);
 	q.type = 0;
 	q.vers = 0;
 	q.path = 1;
@@ -70,13 +71,13 @@ xwalk1(Fid *fid, char *name, Qid *qid)
 }
 
 static char*
-xclone(Fid *fid, Fid *newfid)
+xclone(Fid *oldfid, Fid *newfid)
 {
-	Response *r, *nr;
-	if(fid->aux == nil)
+	SubFid *r, *nr;
+	if(oldfid->aux == nil)
 		return nil;
-	r = fid->aux;
-	nr = emalloc9p(sizeof(Response));
+	r = oldfid->aux;
+	nr = emalloc9p(sizeof(SubFid));
 	if(r->src != nil)
 		nr->src = estrdup9p(r->src);
 	if(r->data != nil)
@@ -89,66 +90,69 @@ xclone(Fid *fid, Fid *newfid)
 static void
 xopen(Req *r)
 {
-	Response *response;
+	char *err;
 	if(r->ifcall.mode != OREAD){
 		respond(r, "permission denied");
 		return;
 	}
 	r->ofcall.qid = r->fid->qid;
-	response = r->fid->aux;
-	response->data = strposts(response->src);
-	response->len  = strlen(response->data);
-	respond(r, nil);
+	err = readsub(r->fid->aux);
+	respond(r, err);
 }
 
 static void
 xread(Req *r)
 {
-	Response *response;
-	response = r->fid->aux;
-	if(r->ifcall.offset >= response->len){
+	SubFid *sf;
+	sf = r->fid->aux;
+	if(r->ifcall.offset >= sf->len){
 		r->ofcall.count = 0;
 		respond(r, nil);
 		return;
 	}
 	/*FIXME*/
-	r->ofcall.data = response->data;
-	r->ofcall.count = response->len;
+	r->ofcall.data = sf->data;
+	r->ofcall.count = sf->len;
 	respond(r, nil);
 }
 
 static void
 xdestroyfid(Fid* fid)
 {
-	Response *response;
+	SubFid *sf;
 	if(fid->aux == nil)
 		return;
-	response = fid->aux;
-	free(response->src);
-	free(response->data);
-	free(response);
+	sf = fid->aux;
+	free(sf->src);
+	free(sf->data);
+	free(sf);
 }
 
 static char*
-strposts(const char* name)
+readsub(SubFid *sf)
 {
-	char buffer[4096];
-	int sz;
-	Post** posts;
-	Error error;
+	String 	*str;
+	Post	**posts;
+	Post	*post;
+	Error	error;
+	char 	*s;
 
-	sz = 0;
-	posts = getposts(name, &error);
+	posts = getposts(sf->src, &error);
 	if(posts == nil)
 		return estrdup9p(error.message);
 
-	for(int i = 0; posts[i] != nil; i++){
-		sz += sprint(buffer+sz, "%ld - %s\n  %s\n",
-			posts[i]->score,
-			posts[i]->title,
-			posts[i]->url);
-		if(sz >= 4095)
-			break;
+	str = s_newalloc(1024);
+	for(int i = 0; (post = posts[i]) != nil; i++){
+		s = smprint("%ld - %s\n  %s\n",
+			post->score,
+			post->title,
+			post->url);
+		s_append(str, s);
+		free(s);
 	}
-	return estrdup9p(buffer);
+	sf->data = estrdup9p(s_to_c(str));
+	sf->len	 = s_len(str);
+	s_free(str);
+	
+	return nil;
 }
