@@ -110,9 +110,16 @@ xread(Req *r)
 		respond(r, nil);
 		return;
 	}
-	/*FIXME*/
-	r->ofcall.data = sf->data;
-	r->ofcall.count = sf->len;
+	/* FIXME: some cases might fail!!! */
+	if(r->ifcall.count < sf->len){
+		char *s = emalloc9p(r->ifcall.count);
+		strncpy(s, sf->data+r->ifcall.offset, r->ifcall.count);
+		r->ofcall.data = s;
+		r->ofcall.count = r->ifcall.count;
+	}else{
+		r->ofcall.data = sf->data;
+		r->ofcall.count = sf->len;
+	}
 	respond(r, nil);
 }
 
@@ -142,7 +149,7 @@ readsub(SubFid *sf)
 		return estrdup9p(error.message);
 
 	str = s_newalloc(1024);
-	for(int i = 0; (post = posts[i]) != nil; i++){
+	posts_foreach(post, posts) {
 		s = smprint("%ld - %s\n  %s\n",
 			post->score,
 			post->title,

@@ -22,4 +22,6 @@ struct Post
  */
 Post** getposts(const char*, Error*);
 
+#define posts_foreach(P,PP) for(int i = 0; (P = PP[i]) != nil; i++)
+
 #endif
