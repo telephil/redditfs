@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <libString.h>
 
 /* Undefine p9 aliases as it conflicts with CURL */
 #undef listen
@@ -12,15 +13,6 @@
 /* Constants */
 #define URL_FORMAT	"http://reddit.com/r/%s/.json"
 #define HTTP_OK		200
-
-/* Memory buffer to hold HTTP response */
-typedef struct Buffer Buffer;
-
-struct Buffer
-{
-	char*	data;
-	size_t	size;
-};
 
 /* Local funcs */
 static void seterror(Error*, char*, ...);
@@ -139,18 +131,12 @@ static
 size_t
 writecallback(void* contents, size_t size, size_t nmemb, void* data)
 {
-	size_t sz = nmemb * size;
-	Buffer* buffer = (Buffer*)data;
+	String* buffer;
+	size_t sz;
 	
-	buffer->data = realloc(buffer->data, buffer->size + sz + 1);
-	if(buffer->data == nil) {
-		fprint(2, "unable to allocate memory for http response buffer\n");
-		return 0;
-	}
-	
-	memcpy(buffer->data + buffer->size, contents, sz);
-	buffer->size += sz;
-	buffer->data[buffer->size] = 0;
+	buffer = data;
+	sz = nmemb * size;
+	s_memappend(buffer, contents, sz);
 	
 	return sz;
 }
@@ -163,23 +149,18 @@ httpget(const char* url, Error* error)
 	CURLcode rc;
 	long code;
 	char* data = nil;
-	Buffer buffer;
+	String *buffer;
 	
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl = curl_easy_init();
 	if(!curl)
 		return nil;
-	
-	buffer.size = 0;
-	buffer.data = malloc(1);
-	if(!buffer.data) {
-		seterror(error, "out of memory");
-		goto cleanup;
-	}
+
+	buffer = s_newalloc(4096);
 	
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writecallback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&buffer);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)buffer);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 	
 	rc = curl_easy_perform(curl);
@@ -194,8 +175,8 @@ httpget(const char* url, Error* error)
 		goto cleanup;
     }
 	
-	data = strdup(buffer.data);
-	free(buffer.data);
+	data = strdup(s_to_c(buffer));
+	s_free(buffer);
 
 cleanup:
 	curl_easy_cleanup(curl);
