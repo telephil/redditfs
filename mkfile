@@ -1,6 +1,6 @@
 CC=9c
 LD=9l
-CFLAGS=
+CFLAGS=-Wall
 LDFLAGS=-lcurl -ljansson
 
 all:V:	redditfs
