@@ -18,10 +18,13 @@ static void 	xattach(Req*);
 static void 	xopen(Req*);
 static char* 	xwalk1(Fid*, char*, Qid*);
 static char*	xclone(Fid*, Fid*);
-static void 	xread(Req*);
+static void		xread(Req*);
 static void		xdestroyfid(Fid*);
 
 static char*	readsub(SubFid*);
+
+char	Eperm[]		= "permission denied";
+char	Esubdir[]	= "subdirectory";
 
 Srv xsrv;
 
@@ -44,7 +47,7 @@ xattach(Req *r)
 	
 	q.type = QTDIR;
 	q.vers = 0;
-	q.path = 0;
+	q.path = 1;
 	r->ofcall.qid = q;
 	r->fid->qid = q;
 	
@@ -58,12 +61,13 @@ xwalk1(Fid *fid, char *name, Qid *qid)
 {
 	SubFid *sf;
 	Qid q;
-	/* FIXME: check if walking subpath */
+	if(fid->qid.path != 1)
+		return Esubdir;
 	sf = fid->aux;
 	sf->src = estrdup9p(name);
 	q.type = QTFILE;
 	q.vers = 0;
-	q.path = 1;
+	q.path = 2;
 	*qid = q;
 	fid->qid = q;
 	return nil;
@@ -90,7 +94,7 @@ xopen(Req *r)
 {
 	char *err;
 	if(r->ifcall.mode != OREAD){
-		respond(r, "permission denied");
+		respond(r, Eperm);
 		return;
 	}
 	r->ofcall.qid = r->fid->qid;
