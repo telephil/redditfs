@@ -14,6 +14,12 @@ usage()
 	threadexitsall("usage");
 }
 
+int
+threadmaybackground(void)
+{
+	return 1;
+}
+
 void
 threadmain(int argc, char *argv[])
 {
